@@ -5,19 +5,20 @@ from risk_kit.expert_scorecard.validation.validators import ScorecardValidator
 
 
 class ValidatorRegistry:
-    _validators: list[ScorecardValidator] = []
+    _validators: dict[str, type[ScorecardValidator]] = {}
 
     @property
-    def validators(self) -> list[ScorecardValidator]:
+    def validators(self) -> dict[str, type[ScorecardValidator]]:
         return self._validators
 
-    def register(self, validator_func: ScorecardValidator) -> None:
-        if validator_func.name in self._validators:
-            raise ValueError(
-                f"Validator with name '{validator_func.name}' already registered")
-        self._validators.append(validator_func)
+    def register(self, validator: type[ScorecardValidator]) -> None:
+        if validator.name in self._validators.keys():
+            raise ValueError(f"Validator with name '{validator.name}' already registered")
+        self._validators[validator.name] = validator
 
     def validate(self, scorecard: ExpertScorecard) -> None:
-        """Run all registered validators"""
-        for validator in self._validators:
+        for validator in self._validators.values():
             validator.validate(scorecard)
+
+    def clear(self) -> None:
+        self._validators.clear()

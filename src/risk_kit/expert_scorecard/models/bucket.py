@@ -13,7 +13,7 @@ NumericDefinitionType = tuple[float, float] | float
 ObjectDefinitionType = str | list[str]
 BucketDefinitionType = NumericDefinitionType | ObjectDefinitionType
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class Bucket(BaseModel, ABC, Generic[T]):
@@ -24,12 +24,13 @@ class Bucket(BaseModel, ABC, Generic[T]):
     TODO: Can we do away with sort keys and display_definition or make them nicer/easier to work with since it is only a visual thing?
     TODO: think about whether an ABC is the best way to go here. Do we need BaseModel?
     """
+
     definition: BucketDefinitionType
     score: float
 
     @abstractmethod
-    def get_score(self, value: float | int | str, default: float) -> float:
-        """Get score for a given value, returns the supplied default if no match"""
+    def contains(self, value: float | int | str) -> bool:
+        """Check if this bucket contains the given value"""
         pass
 
     @abstractmethod
@@ -48,20 +49,20 @@ class Bucket(BaseModel, ABC, Generic[T]):
         pass
 
 
-class NumericBucket(Bucket['NumericBucket']):
+class NumericBucket(Bucket["NumericBucket"]):
     """
     Implementation of a Bucket class for numeric values. Numerical buckets are made up of ranges or exact values.
     Usually exact values are used for "special cases" such as a number than has a special meaning like 99999 or 0.
     Ranges are used for "normal cases" such as 18-25, 26-65, 66-100.
     """
+
     definition: NumericDefinitionType
     left_inclusive: bool = True
     right_inclusive: bool = False
 
-    def get_score(self, value: float | int | str, default: float) -> float:
+    def contains(self, value: float | int | str) -> bool:
         if not isinstance(value, int | float):
-            raise TypeError(
-                f"NumericBucket only accepts int or float values, got {type(value).__name__}: {value}")
+            raise TypeError(f"NumericBucket only accepts int or float values, got {type(value).__name__}: {value}")
 
         if isinstance(self.definition, tuple):
             left_bound, right_bound = self.definition
@@ -69,15 +70,11 @@ class NumericBucket(Bucket['NumericBucket']):
             left_condition = value >= left_bound if self.left_inclusive else value > left_bound
             right_condition = value <= right_bound if self.right_inclusive else value < right_bound
 
-            if left_condition and right_condition:
-                return self.score
+            return left_condition and right_condition
         elif isinstance(self.definition, float):
-            if value == self.definition:
-                return self.score
+            return value == self.definition
 
-        logger.warning(
-            f"No score found for numeric value: {value} in bucket: {self.definition}")
-        return default
+        return False
 
     def get_sort_key(self) -> tuple[int, float]:
         """Sort ranges first by lowest score, then exact values"""
@@ -111,16 +108,16 @@ class NumericBucket(Bucket['NumericBucket']):
 
         # Check if self includes the boundary point
         self_includes = (
-            (boundary_point == self_left and self.left_inclusive) or
-            (boundary_point == self_right and self.right_inclusive) or
-            (self_left < boundary_point < self_right)
+            (boundary_point == self_left and self.left_inclusive)
+            or (boundary_point == self_right and self.right_inclusive)
+            or (self_left < boundary_point < self_right)
         )
 
         # Check if other includes the boundary point
         other_includes = (
-            (boundary_point == other_left and other.left_inclusive) or
-            (boundary_point == other_right and other.right_inclusive) or
-            (other_left < boundary_point < other_right)
+            (boundary_point == other_left and other.left_inclusive)
+            or (boundary_point == other_right and other.right_inclusive)
+            or (other_left < boundary_point < other_right)
         )
 
         return self_includes and other_includes
@@ -143,27 +140,23 @@ class NumericBucket(Bucket['NumericBucket']):
             return f"= {self.definition}"
 
 
-class ObjectBucket(Bucket['ObjectBucket']):
+class ObjectBucket(Bucket["ObjectBucket"]):
     """
     Bucket for string/categorical values. Supports single strings or lists of strings.
     """
+
     definition: ObjectDefinitionType
 
-    def get_score(self, value: float | int | str, default: float) -> float:
+    def contains(self, value: float | int | str) -> bool:
         if not isinstance(value, str):
-            raise TypeError(
-                f"ObjectBucket only accepts string values, got {type(value).__name__}: {value}")
+            raise TypeError(f"ObjectBucket only accepts string values, got {type(value).__name__}: {value}")
 
         if isinstance(self.definition, str):
-            if value == self.definition:
-                return self.score
+            return value == self.definition
         elif isinstance(self.definition, list):
-            if value in self.definition:
-                return self.score
+            return value in self.definition
 
-        logger.warning(
-            f"No score found for string value: {value} in bucket: {self.definition}")
-        return default
+        return False
 
     def get_sort_key(self) -> tuple[int, float]:
         """Sort lists before strings"""

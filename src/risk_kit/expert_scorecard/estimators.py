@@ -24,13 +24,11 @@ class ScorecardEstimator(BaseEstimator, RegressorMixin):
     ----------
     scorecard : ExpertScorecard
         The expert scorecard to wrap
-    feature_names : list of str, optional
-        Expected feature names for input validation
     """
 
     def __init__(self, scorecard: ExpertScorecard):
         self.scorecard = scorecard
-        self.feature_names = self.scorecard.feature_names
+        self.feature_names_ = self.scorecard.feature_names
 
     def fit(self, X, y=None, **fit_params) -> ScorecardEstimator:  # type: ignore
         """Fit is a no-op for expert scorecards so we just return the estimator and set the fitted state to True"""
@@ -47,23 +45,15 @@ class ScorecardEstimator(BaseEstimator, RegressorMixin):
         elif isinstance(X, dict):
             return np.array([self._score_record(X)])
         elif isinstance(X, np.ndarray):
-            if not hasattr(self, 'feature_names_'):
-                raise ValueError(
-                    "Cannot predict with numpy array: no feature names available")
+            if not hasattr(self, "feature_names_"):
+                raise ValueError("Cannot predict with numpy array: no feature names available")
             if X.ndim == 1:
                 record = dict(zip(self.feature_names_, X, strict=True))
                 return np.array([self._score_record(record)])
             else:
-                return np.array([
-                    self._score_record(
-                        dict(zip(self.feature_names_, row, strict=True)))
-                    for row in X
-                ])
+                return np.array([self._score_record(dict(zip(self.feature_names_, row, strict=True))) for row in X])
         else:
-            raise ValueError(
-                "X must be pandas DataFrame, dict, or numpy array, "
-                f"got {type(X).__name__}"
-            )
+            raise ValueError("X must be pandas DataFrame, dict, or numpy array, " f"got {type(X).__name__}")
 
     def _score_record(self, record: dict) -> float:  # type: ignore
         """Score a single record (dictionary of feature values)."""
@@ -79,9 +69,8 @@ class ScorecardEstimator(BaseEstimator, RegressorMixin):
     def get_params(self, deep=True) -> dict:  # type: ignore
         """Get parameters for this estimator."""
         params = super().get_params(deep=deep)
-        if deep and hasattr(self.scorecard, 'get_params'):
+        if deep and hasattr(self.scorecard, "get_params"):
             # Include scorecard parameters if available
-            scorecard_params = {f'scorecard__{k}': v
-                                for k, v in self.scorecard.get_params().items()}
+            scorecard_params = {f"scorecard__{k}": v for k, v in self.scorecard.get_params().items()}
             params.update(scorecard_params)
         return params

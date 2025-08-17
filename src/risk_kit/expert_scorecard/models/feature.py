@@ -13,22 +13,34 @@ logger = logging.getLogger(__name__)
 
 class BaseFeature(BaseModel, ABC):
     """Base class for all feature types."""
+
     name: str = Field(
-        description="The name of the feature. This is the name that will be used to identify the feature in the scorecard. It is recommended to match the name of the feature to the name of the column in the data.")
+        description="The name of the feature. This is the name that will be used to identify the feature in the scorecard. It is recommended to match the name of the feature to the name of the column in the data."
+    )
     family: str = Field(
-        description="The family of the feature. Useful for grouping features together and understanding the dominance of feature families.")
+        description="The family of the feature. Useful for grouping features together and understanding the dominance of feature families."
+    )
     description: str
     buckets: list[NumericBucket] | list[ObjectBucket]
     weight: float = Field(
-        description="The weight of the feature in the overall scorecard. This is the weight that will be used to calculate the score for the feature i.e bucket points * weight = final score")
+        description="The weight of the feature in the overall scorecard. This is the weight that will be used to calculate the score for the feature i.e bucket points * weight = final score"
+    )
     default_points: float = 0.0
+
+    def _get_bucket_for_value(self, value: float | str) -> NumericBucket | ObjectBucket | None:
+        """Get the bucket for a given value."""
+        for bucket in self.buckets:
+            if bucket.contains(value):
+                return bucket
+        return None
 
     def get_score(self, value: float | str) -> float:
         """Get the score for a given value."""
-        for bucket in self.buckets:
-            points = bucket.get_score(value, self.default_points)
-            if points != self.default_points:
-                return points
+        bucket = self._get_bucket_for_value(value)
+        if bucket is not None:
+            return bucket.score
+
+        logger.warning(f"No bucket found for value: {value} in feature: {self.name}")
         return self.default_points
 
     @model_validator(mode="after")
@@ -40,7 +52,7 @@ class BaseFeature(BaseModel, ABC):
     def has_overlapping_buckets(self) -> bool:
         """Check if any buckets in this feature overlap with each other"""
         for i, bucket1 in enumerate(self.buckets):
-            for bucket2 in self.buckets[i+1:]:
+            for bucket2 in self.buckets[i + 1 :]:
                 if bucket1.overlaps_with(bucket2):  # type: ignore
                     return True
         return False
@@ -49,7 +61,7 @@ class BaseFeature(BaseModel, ABC):
         """Get all pairs of overlapping buckets in this feature"""
         overlaps = []
         for i, bucket1 in enumerate(self.buckets):
-            for bucket2 in self.buckets[i+1:]:
+            for bucket2 in self.buckets[i + 1 :]:
                 if bucket1.overlaps_with(bucket2):  # type: ignore
                     overlaps.append((bucket1, bucket2))
         return overlaps
@@ -65,12 +77,12 @@ class BaseFeature(BaseModel, ABC):
         rows = []
         for i, bucket in enumerate(self.buckets):
             row = {
-                'feature': self.name if i == 0 else "",
-                'family': self.family or "" if i == 0 else "",
-                'weight': f"{self.weight}" if i == 0 else "",
-                'bucket_definition': bucket.display_definition(),  # type: ignore
-                'score': f"{bucket.score}",  # type: ignore
-                'default_points': f"{self.default_points}" if i == 0 else ""
+                "feature": self.name if i == 0 else "",
+                "family": self.family or "" if i == 0 else "",
+                "weight": f"{self.weight}" if i == 0 else "",
+                "bucket_definition": bucket.display_definition(),  # type: ignore
+                "score": f"{bucket.score}",  # type: ignore
+                "default_points": f"{self.default_points}" if i == 0 else "",
             }
             rows.append(row)
         return rows
@@ -78,9 +90,11 @@ class BaseFeature(BaseModel, ABC):
 
 class NumericFeature(BaseFeature):
     """Feature for numeric values using NumericBucket instances."""
+
     buckets: list[NumericBucket]
 
 
 class ObjectFeature(BaseFeature):
     """Feature for categorical/string values using ObjectBucket instances."""
+
     buckets: list[ObjectBucket]
