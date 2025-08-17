@@ -5,9 +5,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from pydantic import BaseModel, Field
-from pydantic.config import ConfigDict
-from pydantic.functional_validators import model_validator
+from pydantic import BaseModel
 from sklearn.base import BaseEstimator, RegressorMixin
 
 from risk_kit.expert_scorecard.models.feature import NumericFeature, ObjectFeature
@@ -24,19 +22,19 @@ class ValidationResult(BaseModel):
     error_message: str | None = None
 
 
-class ExpertScorecard(BaseModel, BaseEstimator, RegressorMixin):
-    name: str
-    description: str
-    version: str
-    features: list[AnyFeature]
-    validation_registry: ValidatorRegistry | None = Field(
-        default=None, exclude=True)
-    validation_results: list[ValidationResult] = Field(default_factory=list)
+class ExpertScorecard(BaseEstimator, RegressorMixin):
 
-    model_config = ConfigDict(extra='allow', arbitrary_types_allowed=True)
+    def __init__(self, name: str, description: str, version: str, features: list[AnyFeature], validation_registry: ValidatorRegistry | None = None) -> None:
+        self.name = name
+        self.description = description
+        self.version = version
+        self.features = features
+        self.validation_registry = validation_registry
+        self.validation_results: list[ValidationResult] = []
+        self.validate()
+        self.is_fitted_ = True
 
-    @model_validator(mode="after")
-    def validate_scorecard(self) -> ExpertScorecard:
+    def validate(self) -> ExpertScorecard:
         if self.validation_registry is not None:
             for validator in self.validation_registry.validators.values():
                 validator.validate(self)
@@ -48,18 +46,19 @@ class ExpertScorecard(BaseModel, BaseEstimator, RegressorMixin):
         return self
 
     @property
-    def feature_names(self) -> list[str]:
-        return [feature.name for feature in self.features]
-
-    @property
     def feature_names_(self) -> list[str]:
         """Sklearn-compatible feature names property."""
-        return self.feature_names
+        return [feature.name for feature in self.features]
 
     def get_params(self, deep: bool = True) -> dict[str, Any]:
         """Get parameters for this estimator (sklearn-compatible)."""
         if deep:
-            return self.model_dump()
+            return {
+                "name": self.name,
+                "description": self.description,
+                "version": self.version,
+                "features": self.features,
+            }
         else:
             # For shallow copy, return top-level parameters only
             return {
@@ -71,7 +70,6 @@ class ExpertScorecard(BaseModel, BaseEstimator, RegressorMixin):
 
     def fit(self, X: Any, y: Any = None, **fit_params: Any) -> ExpertScorecard:
         """Fit is a no-op for expert scorecards - they are pre-trained."""
-        self.is_fitted_ = True
         return self
 
     def predict(self, X: Any) -> np.ndarray:
@@ -83,10 +81,10 @@ class ExpertScorecard(BaseModel, BaseEstimator, RegressorMixin):
             return np.array([self._score_record(X)])
         elif isinstance(X, np.ndarray):
             if X.ndim == 1:
-                record = dict(zip(self.feature_names, X, strict=True))
+                record = dict(zip(self.feature_names_, X, strict=True))
                 return np.array([self._score_record(record)])
             else:
-                return np.array([self._score_record(dict(zip(self.feature_names, row, strict=True))) for row in X])
+                return np.array([self._score_record(dict(zip(self.feature_names_, row, strict=True))) for row in X])
         else:
             raise ValueError(
                 f"X must be pandas DataFrame, dict, or numpy array, got {type(X).__name__}")
@@ -107,13 +105,6 @@ class ExpertScorecard(BaseModel, BaseEstimator, RegressorMixin):
     def score(self, X: Any, y: Any) -> np.ndarray:
         """Return the predicted scores (sklearn-compatible)."""
         return self.predict(X)
-
-    @classmethod
-    def from_json(cls, json_str: str) -> ExpertScorecard:
-        return cls.model_validate_json(json_str)
-
-    def to_json(self) -> str:
-        return self.model_dump_json()
 
     def get_table_data(self) -> dict[str, list[dict[str, str]]]:
         return {feature.name: feature.get_table_rows() for feature in self.features}
