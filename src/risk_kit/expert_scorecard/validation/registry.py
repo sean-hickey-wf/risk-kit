@@ -12,8 +12,7 @@ class ValidatorRegistry:
 
     def register(self, validator: type[ScorecardValidator]) -> None:
         if validator.name in self._validators.keys():
-            raise ValueError(
-                f"Validator with name '{validator.name}' already registered")
+            raise ValueError(f"Validator with name '{validator.name}' already registered")
         self._validators[validator.name] = validator
 
     def clear(self) -> None:

@@ -40,8 +40,7 @@ class BaseFeature(BaseModel, ABC):
         if bucket is not None:
             return bucket.score
 
-        logger.warning(
-            f"No bucket found for value: {value} in feature: {self.name}")
+        logger.warning(f"No bucket found for value: {value} in feature: {self.name}")
         return self.default_points
 
     @model_validator(mode="after")
@@ -53,7 +52,7 @@ class BaseFeature(BaseModel, ABC):
     def has_overlapping_buckets(self) -> bool:
         """Check if any buckets in this feature overlap with each other"""
         for i, bucket1 in enumerate(self.buckets):
-            for bucket2 in self.buckets[i + 1:]:
+            for bucket2 in self.buckets[i + 1 :]:
                 if bucket1.overlaps_with(bucket2):  # type: ignore
                     return True
         return False
@@ -62,7 +61,7 @@ class BaseFeature(BaseModel, ABC):
         """Get all pairs of overlapping buckets in this feature"""
         overlaps = []
         for i, bucket1 in enumerate(self.buckets):
-            for bucket2 in self.buckets[i + 1:]:
+            for bucket2 in self.buckets[i + 1 :]:
                 if bucket1.overlaps_with(bucket2):  # type: ignore
                     overlaps.append((bucket1, bucket2))
         return overlaps

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "risk-kit"
-version = "0.0.2"
+version = "0.0.3"
 description = "Open Source Python Package For Expert Risk Scorecards"
 authors = ["Sean Hickey <sean.hickey@wayflyer.com>"]
 license = "MIT"

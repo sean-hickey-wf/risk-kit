@@ -64,8 +64,7 @@ class NumericBucket(Bucket["NumericBucket"]):
     def contains(self, value: float | int | str) -> bool:
         # Use numbers.Number to check for any numeric type (stdlib + numpy)
         if not isinstance(value, numbers.Number):
-            raise TypeError(
-                f"NumericBucket only accepts numeric values, got {type(value).__name__}: {value}")
+            raise TypeError(f"NumericBucket only accepts numeric values, got {type(value).__name__}: {value}")
 
         # Convert to float for consistent processing
         value = float(value)
@@ -143,10 +142,8 @@ class NumericBucket(Bucket["NumericBucket"]):
             right_bracket = "]" if self.right_inclusive else ")"
 
             # Format infinity values nicely
-            left_val = "-∞" if self.definition[0] == float(
-                '-inf') else str(self.definition[0])
-            right_val = "∞" if self.definition[1] == float(
-                'inf') else str(self.definition[1])
+            left_val = "-∞" if self.definition[0] == float("-inf") else str(self.definition[0])
+            right_val = "∞" if self.definition[1] == float("inf") else str(self.definition[1])
 
             return f"{left_bracket}{left_val}, {right_val}{right_bracket}"
         else:
@@ -162,8 +159,7 @@ class ObjectBucket(Bucket["ObjectBucket"]):
 
     def contains(self, value: float | int | str) -> bool:
         if not isinstance(value, str):
-            raise TypeError(
-                f"ObjectBucket only accepts string values, got {type(value).__name__}: {value}")
+            raise TypeError(f"ObjectBucket only accepts string values, got {type(value).__name__}: {value}")
 
         if isinstance(self.definition, str):
             return value == self.definition

@@ -16,6 +16,7 @@ AnyFeature = NumericFeature | ObjectFeature
 
 class ValidationResult(BaseModel):
     """Metadata about validation that was performed - Good for debugging and auditing"""
+
     validator_name: str
     validated_at: datetime
     passed: bool
@@ -24,7 +25,14 @@ class ValidationResult(BaseModel):
 
 class ExpertScorecard(BaseEstimator, RegressorMixin):
 
-    def __init__(self, name: str, description: str, version: str, features: list[AnyFeature], validation_registry: ValidatorRegistry | None = None) -> None:
+    def __init__(
+        self,
+        name: str,
+        description: str,
+        version: str,
+        features: list[AnyFeature],
+        validation_registry: ValidatorRegistry | None = None,
+    ) -> None:
         self.name = name
         self.description = description
         self.version = version
@@ -38,11 +46,9 @@ class ExpertScorecard(BaseEstimator, RegressorMixin):
         if self.validation_registry is not None:
             for validator in self.validation_registry.validators.values():
                 validator.validate(self)
-                self.validation_results.append(ValidationResult(
-                    validator_name=validator.name,
-                    validated_at=datetime.now(),
-                    passed=True
-                ))
+                self.validation_results.append(
+                    ValidationResult(validator_name=validator.name, validated_at=datetime.now(), passed=True)
+                )
         return self
 
     @property
@@ -65,7 +71,7 @@ class ExpertScorecard(BaseEstimator, RegressorMixin):
                 "name": self.name,
                 "description": self.description,
                 "version": self.version,
-                "features": self.features
+                "features": self.features,
             }
 
     def fit(self, X: Any, y: Any = None, **fit_params: Any) -> ExpertScorecard:
@@ -86,8 +92,7 @@ class ExpertScorecard(BaseEstimator, RegressorMixin):
             else:
                 return np.array([self._score_record(dict(zip(self.feature_names_, row, strict=True))) for row in X])
         else:
-            raise ValueError(
-                f"X must be pandas DataFrame, dict, or numpy array, got {type(X).__name__}")
+            raise ValueError(f"X must be pandas DataFrame, dict, or numpy array, got {type(X).__name__}")
 
     def _score_record(self, record: dict[str, Any]) -> float:
         """Score a single record (dictionary of feature values)."""

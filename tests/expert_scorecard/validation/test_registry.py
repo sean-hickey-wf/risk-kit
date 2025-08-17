@@ -42,6 +42,5 @@ def test_list_of_validators(registry: ValidatorRegistry) -> None:
     registry.register(FeatureWeightValidator)
     registry.register(OverlapValidator)
 
-    expected_validators = {
-        "feature_weight": FeatureWeightValidator, "overlap": OverlapValidator}
+    expected_validators = {"feature_weight": FeatureWeightValidator, "overlap": OverlapValidator}
     assert registry.validators == expected_validators
