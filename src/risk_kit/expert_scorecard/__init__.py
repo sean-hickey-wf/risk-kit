@@ -20,10 +20,22 @@ Functions:
     calculate_score: Calculate risk score for given input data
 """
 
-from .models import Bucket, Feature, Scorecard
+from .models import (
+    BaseFeature,
+    Bucket,
+    ExpertScorecard,
+    NumericBucket,
+    NumericFeature,
+    ObjectBucket,
+    ObjectFeature,
+)
 
 __all__ = [
     "Bucket",
-    "Feature",
-    "Scorecard",
+    "NumericBucket",
+    "ObjectBucket",
+    "BaseFeature",
+    "NumericFeature",
+    "ObjectFeature",
+    "ExpertScorecard",
 ]

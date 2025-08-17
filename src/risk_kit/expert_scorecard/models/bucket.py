@@ -1,27 +1,35 @@
+from __future__ import annotations
+
 import logging
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
+# making distinct types here because we want a separation between numeric and object buckets. They should never mix
 NumericDefinitionType = tuple[float, float] | float
 ObjectDefinitionType = str | list[str]
 BucketDefinitionType = NumericDefinitionType | ObjectDefinitionType
 
+T = TypeVar('T')
 
-class Bucket(BaseModel, ABC):
+
+class Bucket(BaseModel, ABC, Generic[T]):
     """
-    Abstract base class for all bucket types.
-    Subclasses must implement get_points and get_sort_key methods.
+    Abstract base class for all bucket types. bucket types can be whatever you want them to be. We have two concrete
+    implementations: NumericBucket and ObjectBucket.
+    Subclasses must implement get_score get_sort_key and overlaps_with methods.
+    TODO: Can we do away with sort keys and display_definition or make them nicer/easier to work with since it is only a visual thing?
+    TODO: think about whether an ABC is the best way to go here. Do we need BaseModel?
     """
     definition: BucketDefinitionType
-    points: float
+    score: float
 
     @abstractmethod
-    def get_points(self, value:  float | str, default: float) -> float:
-        """Get points for a given value, return default if no match"""
+    def get_score(self, value: float | int | str, default: float) -> float:
+        """Get score for a given value, returns the supplied default if no match"""
         pass
 
     @abstractmethod
@@ -30,51 +38,92 @@ class Bucket(BaseModel, ABC):
         pass
 
     @abstractmethod
-    def overlaps_with(self, other: 'Bucket') -> bool:
+    def overlaps_with(self, other: T) -> bool:
         """Check if this bucket overlaps with another bucket of the same type"""
         pass
 
+    @abstractmethod
+    def display_definition(self) -> str:
+        """Return a human-readable string representation of the bucket definition"""
+        pass
 
-class NumericBucket(Bucket):
+
+class NumericBucket(Bucket['NumericBucket']):
     """
-    Bucket for numeric values. Supports exact values (int/float) or ranges (tuple).
+    Implementation of a Bucket class for numeric values. Numerical buckets are made up of ranges or exact values.
+    Usually exact values are used for "special cases" such as a number than has a special meaning like 99999 or 0.
+    Ranges are used for "normal cases" such as 18-25, 26-65, 66-100.
     """
     definition: NumericDefinitionType
+    left_inclusive: bool = True
+    right_inclusive: bool = False
 
-    def get_points(self, value: float | str, default: float) -> float:
-        if not isinstance(value, float):
+    def get_score(self, value: float | int | str, default: float) -> float:
+        if not isinstance(value, int | float):
             raise TypeError(
-                f"NumericBucket only accepts float values, got {type(value).__name__}: {value}")
+                f"NumericBucket only accepts int or float values, got {type(value).__name__}: {value}")
 
         if isinstance(self.definition, tuple):
-            if self.definition[0] <= value <= self.definition[1]:
-                return self.points
+            left_bound, right_bound = self.definition
+
+            left_condition = value >= left_bound if self.left_inclusive else value > left_bound
+            right_condition = value <= right_bound if self.right_inclusive else value < right_bound
+
+            if left_condition and right_condition:
+                return self.score
         elif isinstance(self.definition, float):
             if value == self.definition:
-                return self.points
+                return self.score
 
-        logger.debug(
-            f"No points found for numeric value: {value} in bucket: {self.definition}")
+        logger.warning(
+            f"No score found for numeric value: {value} in bucket: {self.definition}")
         return default
 
     def get_sort_key(self) -> tuple[int, float]:
-        """Sort ranges first by lower bound, then exact values"""
+        """Sort ranges first by lowest score, then exact values"""
         if isinstance(self.definition, tuple):
-            return (0, self.definition[0])
+            return (0, self.score)
         else:
-            return (1, self.definition)
+            return (1, self.score)
 
-    def overlaps_with(self, other: 'Bucket') -> bool:
+    def overlaps_with(self, other: NumericBucket) -> bool:
         """Check if this numeric bucket overlaps with another numeric bucket"""
-        if not isinstance(other, NumericBucket):
-            return False
-
-        # Get ranges for both buckets
         self_range = self._get_range()
         other_range = other._get_range()
 
-        # Check for overlap: ranges overlap if max(start1, start2) <= min(end1, end2)
-        return max(self_range[0], other_range[0]) <= min(self_range[1], other_range[1])
+        self_left, self_right = self_range
+        other_left, other_right = other_range
+
+        # Two ranges overlap if there's any value that belongs to both ranges
+        # We can check this by finding the intersection and seeing if it's non-empty
+
+        intersection_left = max(self_left, other_left)
+        intersection_right = min(self_right, other_right)
+
+        if intersection_left > intersection_right:
+            return False
+
+        if intersection_left < intersection_right:
+            return True
+
+        # If intersection_left == intersection_right, check if both ranges include this point
+        boundary_point = intersection_left
+
+        # Check if self includes the boundary point
+        self_includes = (
+            (boundary_point == self_left and self.left_inclusive) or
+            (boundary_point == self_right and self.right_inclusive) or
+            (self_left < boundary_point < self_right)
+        )
+
+        # Check if other includes the boundary point
+        other_includes = (
+            (boundary_point == other_left and other.left_inclusive) or
+            (boundary_point == other_right and other.right_inclusive) or
+            (other_left < boundary_point < other_right)
+        )
+
+        return self_includes and other_includes
 
     def _get_range(self) -> tuple[float, float]:
         """Get the range covered by this bucket"""
@@ -84,41 +133,47 @@ class NumericBucket(Bucket):
             # Exact value is treated as a range [value, value]
             return (float(self.definition), float(self.definition))
 
+    def display_definition(self) -> str:
+        """Return a human-readable string representation of the bucket definition"""
+        if isinstance(self.definition, tuple):
+            left_bracket = "[" if self.left_inclusive else "("
+            right_bracket = "]" if self.right_inclusive else ")"
+            return f"{left_bracket}{self.definition[0]}, {self.definition[1]}{right_bracket}"
+        else:
+            return f"= {self.definition}"
 
-class ObjectBucket(Bucket):
+
+class ObjectBucket(Bucket['ObjectBucket']):
     """
     Bucket for string/categorical values. Supports single strings or lists of strings.
     """
     definition: ObjectDefinitionType
 
-    def get_points(self, value: float | str, default: float) -> float:
+    def get_score(self, value: float | int | str, default: float) -> float:
         if not isinstance(value, str):
             raise TypeError(
                 f"ObjectBucket only accepts string values, got {type(value).__name__}: {value}")
 
         if isinstance(self.definition, str):
             if value == self.definition:
-                return self.points
+                return self.score
         elif isinstance(self.definition, list):
             if value in self.definition:
-                return self.points
+                return self.score
 
-        logger.debug(
-            f"No points found for string value: {value} in bucket: {self.definition}")
+        logger.warning(
+            f"No score found for string value: {value} in bucket: {self.definition}")
         return default
 
-    def get_sort_key(self) -> tuple[int, str]:
-        """Sort single strings before lists, alphabetically within each type"""
+    def get_sort_key(self) -> tuple[int, float]:
+        """Sort lists before strings"""
         if isinstance(self.definition, str):
-            return (2, self.definition)
+            return (1, self.score)
         else:
-            return (3, str(self.definition[0]) if self.definition else "")
+            return (0, self.score)
 
-    def overlaps_with(self, other: 'Bucket') -> bool:
+    def overlaps_with(self, other: ObjectBucket) -> bool:
         """Check if this object bucket overlaps with another object bucket"""
-        if not isinstance(other, ObjectBucket):
-            return False
-
         # Get sets of values for both buckets
         self_values = self._get_values()
         other_values = other._get_values()
@@ -132,3 +187,10 @@ class ObjectBucket(Bucket):
             return {self.definition}
         else:
             return set(self.definition)
+
+    def display_definition(self) -> str:
+        """Return a human-readable string representation of the bucket definition"""
+        if isinstance(self.definition, str):
+            return f"'{self.definition}'"
+        else:
+            return f"{self.definition}"

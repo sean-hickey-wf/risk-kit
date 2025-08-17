@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from risk_kit.expert_scorecard.models import Scorecard
-from risk_kit.expert_scorecard.validation.validator import ScorecardValidator
+from risk_kit.expert_scorecard.models import ExpertScorecard
+from risk_kit.expert_scorecard.validation.validators import ScorecardValidator
 
 
 class ValidatorRegistry:
     _validators: list[ScorecardValidator] = []
 
-    def list_validators(self) -> list[ScorecardValidator]:
+    @property
+    def validators(self) -> list[ScorecardValidator]:
         return self._validators
 
     def register(self, validator_func: ScorecardValidator) -> None:
@@ -16,7 +17,7 @@ class ValidatorRegistry:
                 f"Validator with name '{validator_func.name}' already registered")
         self._validators.append(validator_func)
 
-    def validate(self, scorecard: Scorecard) -> None:
+    def validate(self, scorecard: ExpertScorecard) -> None:
         """Run all registered validators"""
         for validator in self._validators:
             validator.validate(scorecard)

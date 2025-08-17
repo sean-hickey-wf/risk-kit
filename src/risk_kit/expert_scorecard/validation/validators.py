@@ -1,16 +1,19 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 
 from pydantic import ValidationError
 
-from risk_kit.expert_scorecard.models import Scorecard
+from risk_kit.expert_scorecard.models import ExpertScorecard
 
 
 class ScorecardValidator(ABC):
     """Abstract base class for scorecard validators"""
     name: str
 
+    @classmethod
     @abstractmethod
-    def validate(self, scorecard: 'Scorecard') -> None:
+    def validate(cls, scorecard: ExpertScorecard) -> None:
         """Validate the scorecard. Raise ValidationError if invalid."""
         pass
 
@@ -22,7 +25,8 @@ class FeatureWeightValidator(ScorecardValidator):
     """
     name: str = "feature_weight"
 
-    def validate(self, scorecard: 'Scorecard') -> None:
+    @classmethod
+    def validate(cls, scorecard: ExpertScorecard) -> None:
         total_weight = sum(feature.weight for feature in scorecard.features)
         if abs(total_weight - 100.0) > 0.001:  # Allow for floating point precision
             raise ValidationError.from_exception_data(
@@ -40,7 +44,8 @@ class OverlapValidator(ScorecardValidator):
     """
     name: str = "overlap"
 
-    def validate(self, scorecard: 'Scorecard') -> None:
+    @classmethod
+    def validate(cls, scorecard: ExpertScorecard) -> None:
         for feature in scorecard.features:
             if feature.has_overlapping_buckets():
                 overlapping_pairs = feature.get_overlapping_buckets()

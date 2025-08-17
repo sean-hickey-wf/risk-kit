@@ -1,9 +1,13 @@
-from .bucket import Bucket
-from .feature import Feature
-from .scorecard import Scorecard
+from .bucket import Bucket, NumericBucket, ObjectBucket
+from .expert_scorecard import ExpertScorecard
+from .feature import BaseFeature, NumericFeature, ObjectFeature
 
 __all__ = [
     "Bucket",
-    "Feature",
-    "Scorecard",
+    "NumericBucket",
+    "ObjectBucket",
+    "BaseFeature",
+    "NumericFeature",
+    "ObjectFeature",
+    "ExpertScorecard",
 ]
