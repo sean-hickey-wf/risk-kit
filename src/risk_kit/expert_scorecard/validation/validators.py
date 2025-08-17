@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
 from pydantic import ValidationError
 
-from risk_kit.expert_scorecard.models import ExpertScorecard
+if TYPE_CHECKING:
+    from risk_kit.expert_scorecard.models import ExpertScorecard
 
 
 class ScorecardValidator(ABC):
@@ -65,5 +67,6 @@ class OverlapValidator(ScorecardValidator):
 
                 raise ValidationError.from_exception_data(
                     "Bucket overlap validation failed",
-                    [{"type": "value_error", "input": feature.name, "ctx": {"error": msg}} for msg in error_messages],
+                    [{"type": "value_error", "input": feature.name,
+                        "ctx": {"error": msg}} for msg in error_messages],
                 )

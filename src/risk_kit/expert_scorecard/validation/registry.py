@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from risk_kit.expert_scorecard.models import ExpertScorecard
 from risk_kit.expert_scorecard.validation.validators import ScorecardValidator
 
 
@@ -13,12 +12,9 @@ class ValidatorRegistry:
 
     def register(self, validator: type[ScorecardValidator]) -> None:
         if validator.name in self._validators.keys():
-            raise ValueError(f"Validator with name '{validator.name}' already registered")
+            raise ValueError(
+                f"Validator with name '{validator.name}' already registered")
         self._validators[validator.name] = validator
-
-    def validate(self, scorecard: ExpertScorecard) -> None:
-        for validator in self._validators.values():
-            validator.validate(scorecard)
 
     def clear(self) -> None:
         self._validators.clear()

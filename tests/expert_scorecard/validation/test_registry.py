@@ -1,7 +1,6 @@
 from collections.abc import Generator
 
 import pytest
-from pydantic import ValidationError
 
 from risk_kit.expert_scorecard.models import ExpertScorecard, NumericBucket, NumericFeature
 from risk_kit.expert_scorecard.validation.registry import ValidatorRegistry
@@ -39,17 +38,10 @@ def test_duplicated_validator_name_errors(registry: ValidatorRegistry) -> None:
         registry.register(FeatureWeightValidator)
 
 
-def test_registry_errors_on_invalid_scorecard(
-    registry: ValidatorRegistry, scorecard_with_invalid_feature_weight: ExpertScorecard
-) -> None:
-    registry.register(FeatureWeightValidator)
-    with pytest.raises(ValidationError):
-        registry.validate(scorecard_with_invalid_feature_weight)
-
-
 def test_list_of_validators(registry: ValidatorRegistry) -> None:
     registry.register(FeatureWeightValidator)
     registry.register(OverlapValidator)
 
-    expected_validators = {"feature_weight": FeatureWeightValidator, "overlap": OverlapValidator}
+    expected_validators = {
+        "feature_weight": FeatureWeightValidator, "overlap": OverlapValidator}
     assert registry.validators == expected_validators

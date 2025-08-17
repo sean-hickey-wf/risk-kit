@@ -8,16 +8,19 @@ executing expert-driven credit risk scorecards. It includes:
 - Score calculation engine with robust validation
 - JSON serialization for system integration
 - Custom validators for business rule enforcement
+- Direct scikit-learn compatibility for ML pipelines
 
 Classes:
     Bucket: Abstract base class for all bucket types
     NumericBucket: Bucket for numeric values (ranges or exact values)
     ObjectBucket: Bucket for categorical/string values
     Feature: Represents a characteristic with buckets and weight
-    Scorecard: Top-level container for features and metadata
+    ExpertScorecard: Top-level container for features and metadata (sklearn-compatible)
 
-Functions:
-    calculate_score: Calculate risk score for given input data
+Features:
+    - ExpertScorecard instances can be used directly in sklearn pipelines
+    - Supports DataFrame, numpy array, and dictionary inputs
+    - Compatible with sklearn estimator interface (fit, predict, get_params)
 """
 
 from .models import (

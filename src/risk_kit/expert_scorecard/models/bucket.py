@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import numbers
 from abc import ABC, abstractmethod
 from typing import Any, Generic, TypeVar
 
@@ -61,8 +62,13 @@ class NumericBucket(Bucket["NumericBucket"]):
     right_inclusive: bool = False
 
     def contains(self, value: float | int | str) -> bool:
-        if not isinstance(value, int | float):
-            raise TypeError(f"NumericBucket only accepts int or float values, got {type(value).__name__}: {value}")
+        # Use numbers.Number to check for any numeric type (stdlib + numpy)
+        if not isinstance(value, numbers.Number):
+            raise TypeError(
+                f"NumericBucket only accepts numeric values, got {type(value).__name__}: {value}")
+
+        # Convert to float for consistent processing
+        value = float(value)
 
         if isinstance(self.definition, tuple):
             left_bound, right_bound = self.definition
@@ -135,7 +141,14 @@ class NumericBucket(Bucket["NumericBucket"]):
         if isinstance(self.definition, tuple):
             left_bracket = "[" if self.left_inclusive else "("
             right_bracket = "]" if self.right_inclusive else ")"
-            return f"{left_bracket}{self.definition[0]}, {self.definition[1]}{right_bracket}"
+
+            # Format infinity values nicely
+            left_val = "-∞" if self.definition[0] == float(
+                '-inf') else str(self.definition[0])
+            right_val = "∞" if self.definition[1] == float(
+                'inf') else str(self.definition[1])
+
+            return f"{left_bracket}{left_val}, {right_val}{right_bracket}"
         else:
             return f"= {self.definition}"
 
@@ -149,7 +162,8 @@ class ObjectBucket(Bucket["ObjectBucket"]):
 
     def contains(self, value: float | int | str) -> bool:
         if not isinstance(value, str):
-            raise TypeError(f"ObjectBucket only accepts string values, got {type(value).__name__}: {value}")
+            raise TypeError(
+                f"ObjectBucket only accepts string values, got {type(value).__name__}: {value}")
 
         if isinstance(self.definition, str):
             return value == self.definition
