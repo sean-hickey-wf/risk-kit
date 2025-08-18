@@ -69,13 +69,15 @@ autodoc_class_signature = "mixed"
 autosummary_generate = True
 
 templates_path = ['_templates']
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ['_build', 'Thumbs.db',
+                    '.DS_Store', '_static/images/README.md']
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = 'furo'
 html_static_path = ['_static']
+html_logo = '_static/images/risk_kit_logo_transparent.png'
 
 # Furo theme options
 html_theme_options = {

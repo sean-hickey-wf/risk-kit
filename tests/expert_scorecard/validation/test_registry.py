@@ -17,9 +17,6 @@ def registry() -> Generator[ValidatorRegistry, None, None]:
 @pytest.fixture
 def scorecard_with_invalid_feature_weight() -> ExpertScorecard:
     return ExpertScorecard(
-        name="Test Scorecard",
-        description="Test Scorecard",
-        version="1.0.0",
         features=[
             NumericFeature(
                 name="Feature 1",

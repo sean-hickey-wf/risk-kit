@@ -10,10 +10,14 @@ Risk-Kit 🎯
 .. code-block:: python
 
    from risk_kit import ExpertScorecard, NumericFeature, NumericBucket
+   from risk_kit.expert_scorecard.validation import ValidatorRegistry, FeatureWeightValidator
 
-   # Define expert scoring rules
+   # Create validation registry
+   registry = ValidatorRegistry()
+   registry.register(FeatureWeightValidator)
+
+   # Define expert scoring rules with validation
    scorecard = ExpertScorecard(
-       name="Credit Risk",
        features=[
            NumericFeature(
                name="income",
@@ -23,7 +27,8 @@ Risk-Kit 🎯
                ],
                weight=100
            )
-       ]
+       ],
+       validation_registry=registry
    )
 
    # Use like any sklearn model
@@ -54,7 +59,8 @@ Getting Started
 1. **Install:** ``pip install risk-kit``
 2. **Learn:** :doc:`quickstart` (5 minutes)
 3. **Example:** :doc:`examples/iris_example` (complete workflow)
-4. **Reference:** :doc:`api/index` (full API)
+4. **Visualize:** :doc:`visualization` (scorecard tables)
+5. **Reference:** :doc:`api/index` (full API)
 
 .. toctree::
    :hidden:
@@ -62,4 +68,5 @@ Getting Started
 
    quickstart
    examples/iris_example
+   visualization
    api/index

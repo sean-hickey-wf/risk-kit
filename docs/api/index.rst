@@ -46,5 +46,4 @@ Quick Reference
 
 **Scikit-learn:**
 
-* :class:`~risk_kit.expert_scorecard.estimators.ScorecardEstimator` - Sklearn-compatible estimator
-* :func:`~risk_kit.expert_scorecard.estimators.to_sklearn` - Conversion utility
+* :class:`~risk_kit.expert_scorecard.models.ExpertScorecard` - Sklearn-compatible scorecard (native integration)

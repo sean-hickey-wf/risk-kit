@@ -8,7 +8,7 @@ import pandas as pd
 from pydantic import BaseModel
 from sklearn.base import BaseEstimator, RegressorMixin
 
-from risk_kit.expert_scorecard.models.feature import NumericFeature, ObjectFeature
+from risk_kit.expert_scorecard.models.feature import FeatureTableRow, NumericFeature, ObjectFeature
 from risk_kit.expert_scorecard.validation.registry import ValidatorRegistry
 
 AnyFeature = NumericFeature | ObjectFeature
@@ -27,15 +27,9 @@ class ExpertScorecard(BaseEstimator, RegressorMixin):
 
     def __init__(
         self,
-        name: str,
-        description: str,
-        version: str,
         features: list[AnyFeature],
         validation_registry: ValidatorRegistry | None = None,
     ) -> None:
-        self.name = name
-        self.description = description
-        self.version = version
         self.features = features
         self.validation_registry = validation_registry
         self.validation_results: list[ValidationResult] = []
@@ -57,22 +51,12 @@ class ExpertScorecard(BaseEstimator, RegressorMixin):
         return [feature.name for feature in self.features]
 
     def get_params(self, deep: bool = True) -> dict[str, Any]:
-        """Get parameters for this estimator (sklearn-compatible)."""
-        if deep:
-            return {
-                "name": self.name,
-                "description": self.description,
-                "version": self.version,
-                "features": self.features,
-            }
-        else:
-            # For shallow copy, return top-level parameters only
-            return {
-                "name": self.name,
-                "description": self.description,
-                "version": self.version,
-                "features": self.features,
-            }
+        """Get parameters for this estimator."""
+        return {
+            "model": self.__class__.__name__,
+            "features": [feature.model_dump() for feature in self.features],
+            "validation_results": [result.model_dump() for result in self.validation_results],
+        }
 
     def fit(self, X: Any, y: Any = None, **fit_params: Any) -> ExpertScorecard:
         """Fit is a no-op for expert scorecards - they are pre-trained."""
@@ -111,5 +95,12 @@ class ExpertScorecard(BaseEstimator, RegressorMixin):
         """Return the predicted scores (sklearn-compatible)."""
         return self.predict(X)
 
-    def get_table_data(self) -> dict[str, list[dict[str, str]]]:
-        return {feature.name: feature.get_table_rows() for feature in self.features}
+    def get_table_data(self) -> tuple[list[str], list[FeatureTableRow]]:
+        headers = list(FeatureTableRow.model_fields.keys())
+        rows = [row for feature in self.features for row in feature.get_feature_rows()]
+        return headers, rows
+
+    def get_score_range(self) -> tuple[float, float]:
+        min_score = min(feature.get_score_range()[0] for feature in self.features)
+        max_score = max(feature.get_score_range()[1] for feature in self.features)
+        return (min_score, max_score)

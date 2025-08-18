@@ -91,15 +91,25 @@ Step 5: Use in ML Workflows
 Validation
 ----------
 
-Validate scorecard integrity:
+Add validation to ensure scorecard integrity. The ``ExpertScorecard`` now requires a ``ValidationRegistry`` to be passed during construction:
 
 .. code-block:: python
 
-   from risk_kit.validation import ValidatorRegistry
+   from risk_kit.expert_scorecard.validation import ValidatorRegistry, FeatureWeightValidator
 
-   # Validate scorecard
+   # Create validation registry
    registry = ValidatorRegistry()
-   registry.validate(scorecard)
+   registry.register(FeatureWeightValidator)
+
+   # Create scorecard with validation (validation runs automatically)
+   scorecard = ExpertScorecard(
+       features=features,
+       validation_registry=registry
+   )
+
+   # Check validation results
+   for result in scorecard.validation_results:
+       print(f"Validated with: {result.validator_name}")
 
 Step 6: Save for Production
 ---------------------------

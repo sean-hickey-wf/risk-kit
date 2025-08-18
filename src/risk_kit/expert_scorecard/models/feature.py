@@ -11,6 +11,16 @@ from risk_kit.expert_scorecard.models.bucket import NumericBucket, ObjectBucket
 logger = logging.getLogger(__name__)
 
 
+class FeatureTableRow(BaseModel):
+    name: str
+    family: str
+    description: str
+    weight: float | None
+    definition: str
+    score: float
+    default_score: float | None
+
+
 class BaseFeature(BaseModel, ABC):
     """Base class for all feature types."""
 
@@ -25,7 +35,7 @@ class BaseFeature(BaseModel, ABC):
     weight: float = Field(
         description="The weight of the feature in the overall scorecard. This is the weight that will be used to calculate the score for the feature i.e bucket points * weight = final score"
     )
-    default_points: float = 0.0
+    default_score: float = 0.0
 
     def _get_bucket_for_value(self, value: float | str) -> NumericBucket | ObjectBucket | None:
         """Get the bucket for a given value."""
@@ -41,7 +51,11 @@ class BaseFeature(BaseModel, ABC):
             return bucket.score
 
         logger.warning(f"No bucket found for value: {value} in feature: {self.name}")
-        return self.default_points
+        return self.default_score
+
+    def get_score_range(self) -> tuple[float, float]:
+        """Get the range of scores for a given feature."""
+        return (min(bucket.score for bucket in self.buckets), max(bucket.score for bucket in self.buckets))
 
     @model_validator(mode="after")
     def order_buckets(self) -> BaseFeature:
@@ -66,25 +80,22 @@ class BaseFeature(BaseModel, ABC):
                     overlaps.append((bucket1, bucket2))
         return overlaps
 
-    def get_table_rows(self) -> list[dict[str, str]]:
+    def get_feature_rows(self) -> list[FeatureTableRow]:
         """
         Get table rows for visualization purposes.
-
-        Returns a list of dictionaries, each representing a row in a table view.
-        The first row for each feature includes feature-level info, subsequent rows
-        only include bucket-specific info.
         """
         rows = []
         for i, bucket in enumerate(self.buckets):
             row = {
-                "feature": self.name if i == 0 else "",
+                "name": self.name if i == 0 else "",
                 "family": self.family or "" if i == 0 else "",
-                "weight": f"{self.weight}" if i == 0 else "",
-                "bucket_definition": bucket.display_definition(),  # type: ignore
-                "score": f"{bucket.score}",  # type: ignore
-                "default_points": f"{self.default_points}" if i == 0 else "",
+                "description": self.description or "" if i == 0 else "",
+                "weight": self.weight if i == 0 else None,
+                "definition": bucket.display_definition(),  # type: ignore
+                "score": bucket.score,  # type: ignore
+                "default_score": self.default_score if i == 0 else None,
             }
-            rows.append(row)
+            rows.append(FeatureTableRow(**row))
         return rows
 
 

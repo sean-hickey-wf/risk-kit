@@ -1,15 +1,12 @@
 Estimators
 ==========
 
-Scikit-learn compatible wrappers for expert scorecards.
+The ExpertScorecard class is directly compatible with scikit-learn.
 
-Estimator
----------
+ExpertScorecard
+---------------
 
-.. autoclass:: risk_kit.expert_scorecard.estimators.ScorecardEstimator
-   :members:
-
-Utilities
----------
-
-.. autofunction:: risk_kit.expert_scorecard.estimators.to_sklearn
+.. autoclass:: risk_kit.expert_scorecard.models.ExpertScorecard
+   :members: fit, predict, get_params, set_params
+   :show-inheritance:
+   :no-index:
